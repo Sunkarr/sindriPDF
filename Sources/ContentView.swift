@@ -58,6 +58,9 @@ struct ContentView: View {
     // Search overlay state
     @State private var isSearchPresented = false
     
+    // Jump to page overlay state
+    @State private var isJumpToPagePresented = false
+    
     // Metadata Inspector state
     @State private var isInspectorPresented = false
     
@@ -73,6 +76,12 @@ struct ContentView: View {
     @State private var scaleFactor: Double = 1.0
     @State private var autoScales: Bool = true
     @State private var displayMode: PDFDisplayMode = .singlePageContinuous
+    
+    @AppStorage("shortcut_zoomFit") private var zoomFitShortcutData: Data?
+    
+    private var zoomFitShortcut: ShortcutConfig {
+        ShortcutManager.getShortcut(forKey: "shortcut_zoomFit", defaultShortcut: ShortcutManager.defaultZoomFit)
+    }
     
     // Shared CustomPDFView for this document window
     private let sharedPDFView = CustomPDFView()
@@ -124,6 +133,21 @@ struct ContentView: View {
                                     )
                                     .padding()
                                 }
+                                Spacer()
+                            }
+                        }
+                        
+                        // Jump to Page HUD overlay
+                        if isJumpToPagePresented {
+                            VStack {
+                                Spacer()
+                                PageJumpOverlayView(
+                                    pdfView: sharedPDFView,
+                                    isPresented: $isJumpToPagePresented,
+                                    currentPage: $currentPage,
+                                    totalPages: totalPages
+                                )
+                                .padding()
                                 Spacer()
                             }
                         }
@@ -183,6 +207,9 @@ struct ContentView: View {
             loadPDF()
         }
         .onOpenURL { url in
+            if focusWindow(showing: url) {
+                return
+            }
             if fileURL == nil {
                 fileURL = url
                 loadPDF()
@@ -194,6 +221,9 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("OpenPDFAsTab"))) { notification in
             guard sharedPDFView.window?.isKeyWindow == true else { return }
             if let url = notification.object as? URL {
+                if focusWindow(showing: url) {
+                    return
+                }
                 if fileURL == nil {
                     self.fileURL = url
                     self.loadPDF()
@@ -215,16 +245,19 @@ struct ContentView: View {
             self.isSearchPresented = false
             saveOpenDocuments()
         }
-        // Handle Sort Tabs request from the AppKit button next to plus
+        // Handle Sort Tabs request from the AppKit button next to plus (not yet implemented)
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("SortTabsAlphabetically"))) { _ in
-            // Make sure this is the window that triggered the sort
-            if sharedPDFView.window?.isKeyWindow == true {
-                sortTabsAlphabetically()
-            }
+            // TODO: Implement tab sorting
         }
         // Expose search trigger to global command menu
         .focusedSceneValue(\.searchAction, {
             isSearchPresented.toggle()
+        })
+        // Expose jump to page trigger to global command menu (Cmd+P)
+        .focusedSceneValue(\.jumpToPageAction, {
+            if pdfDocument != nil {
+                isJumpToPagePresented.toggle()
+            }
         })
         // Expose custom close trigger to global command menu (Cmd+W)
         .focusedSceneValue(\.closeAction, {
@@ -242,7 +275,7 @@ struct ContentView: View {
             Button("") {
                 autoScales.toggle()
             }
-            .keyboardShortcut("0", modifiers: .command)
+            .keyboardShortcut(zoomFitShortcut.swiftUIKeyEquivalent, modifiers: zoomFitShortcut.swiftUIModifiers)
             .opacity(0)
             .allowsHitTesting(false)
         )
@@ -273,42 +306,14 @@ struct ContentView: View {
         }
     }
     
-    // Sort all tabs in the current tab group alphabetically by title
+    // Sort tabs alphabetically by swapping PDF content between windows.
+    // This avoids moving windows between tab positions entirely, which triggers
+    // AppKit lifecycle events that cause splits, freezes, and ghost tabs.
+    // Instead, every window stays exactly where it is — only the loaded document
+    // is changed so that reading left-to-right produces alphabetical order.
+    // TODO: Implement tab sorting
     private func sortTabsAlphabetically() {
-        guard let window = sharedPDFView.window ?? NSApp.keyWindow,
-              let tabGroup = window.tabGroup,
-              tabGroup.windows.count > 1 else { return }
-        
-        TabBarButtonTarget.isSorting = true
-        defer { TabBarButtonTarget.isSorting = false }
-        
-        let originalKeyWindow = NSApp.keyWindow
-        let sorted = tabGroup.windows.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
-        let host = sorted[0]
-        
-        // Suppress all animations during the reorder
-        NSAnimationContext.beginGrouping()
-        NSAnimationContext.current.duration = 0
-        
-        // Detach all non-host windows first
-        for i in 1..<sorted.count {
-            sorted[i].moveTabToNewWindow(nil)
-        }
-        
-        // Re-add them in forward order next to the host window to produce correct A-Z ordering
-        for i in 1..<sorted.count {
-            host.addTabbedWindow(sorted[i], ordered: .above)
-        }
-        
-        NSAnimationContext.endGrouping()
-        
-        // Select the original active window again
-        originalKeyWindow?.makeKey()
-        
-        // Ensure tab bar stays visible
-        if let tg = window.tabGroup, !tg.isTabBarVisible {
-            window.toggleTabBar(nil)
-        }
+        // Not yet implemented
     }
     
     // Dynamically inject the sort button next to the native plus button on the AppKit tab bar
@@ -467,6 +472,25 @@ struct ContentView: View {
             pdfDocument = nil
             return
         }
+        
+        // Find the window hosting this ContentView
+        let hostingWindow: NSWindow? = {
+            if let w = sharedPDFView.window { return w }
+            for window in NSApplication.shared.windows {
+                if let contentView = window.contentView,
+                   findPDFView(in: contentView) == sharedPDFView {
+                    return window
+                }
+            }
+            return nil
+        }()
+        
+        // If there is another window already displaying this PDF, focus it and close this window
+        if let window = hostingWindow, focusWindow(showing: url, excluding: window) {
+            window.close()
+            return
+        }
+        
         if let doc = PDFDocument(url: url) {
             self.pdfDocument = doc
             self.totalPages = doc.pageCount
@@ -483,6 +507,9 @@ struct ContentView: View {
         
         if panel.runModal() == .OK {
             if let url = panel.url {
+                if focusWindow(showing: url) {
+                    return
+                }
                 self.fileURL = url
                 self.loadPDF()
             }
@@ -498,6 +525,9 @@ struct ContentView: View {
         
         if panel.runModal() == .OK {
             if let url = panel.url {
+                if focusWindow(showing: url) {
+                    return
+                }
                 if fileURL == nil {
                     self.fileURL = url
                     self.loadPDF()
@@ -517,6 +547,9 @@ struct ContentView: View {
         
         if panel.runModal() == .OK {
             if let url = panel.url {
+                if focusWindow(showing: url) {
+                    return
+                }
                 // Always open in a new window by temporarily disabling tab merging
                 openWindow(value: url)
                 // After the window appears, detach it from the tab group
@@ -538,6 +571,9 @@ struct ContentView: View {
     // Restore session of PDF documents
     private func restoreSavedSessionIfFirstWindow() {
         guard fileURL == nil else { return }
+        
+        let shouldRestore = UserDefaults.standard.object(forKey: "RestoreSessionOnLaunch") as? Bool ?? true
+        guard shouldRestore else { return }
         
         // Find visible application windows to determine if we are the first window
         let otherWindows = NSApplication.shared.windows.filter {

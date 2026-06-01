@@ -14,6 +14,8 @@ struct StatusBarView: View {
     @State private var pageInputString = ""
     @FocusState private var isPageInputFocused: Bool
     
+    @AppStorage("PageDimensionUnit") private var pageDimensionUnit: String = "mm"
+    
     // Zoom percentage options for popover
     private let zoomOptions = [0.25, 0.50, 0.75, 1.00, 1.25, 1.50, 2.00, 3.00, 4.00]
     
@@ -156,9 +158,22 @@ struct StatusBarView: View {
             return "-- × -- mm"
         }
         let bounds = page.bounds(for: .mediaBox)
-        let widthMm = bounds.width * 25.4 / 72.0
-        let heightMm = bounds.height * 25.4 / 72.0
-        return String(format: "%.1f × %.1f mm", widthMm, heightMm)
+        switch pageDimensionUnit {
+        case "cm":
+            let widthCm = bounds.width * 2.54 / 72.0
+            let heightCm = bounds.height * 2.54 / 72.0
+            return String(format: "%.2f × %.2f cm", widthCm, heightCm)
+        case "inch":
+            let widthInch = bounds.width / 72.0
+            let heightInch = bounds.height / 72.0
+            return String(format: "%.2f × %.2f in", widthInch, heightInch)
+        case "points":
+            return String(format: "%.0f × %.0f pt", bounds.width, bounds.height)
+        default: // "mm"
+            let widthMm = bounds.width * 25.4 / 72.0
+            let heightMm = bounds.height * 25.4 / 72.0
+            return String(format: "%.1f × %.1f mm", widthMm, heightMm)
+        }
     }
     
     // Zoom operations

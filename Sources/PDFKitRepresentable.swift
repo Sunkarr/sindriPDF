@@ -37,6 +37,99 @@ class CustomPDFView: PDFView {
     private var scrollMonitor: Any?
     private var closeProxy: WindowCloseProxy?
     
+    private var isMiddleDragging = false
+    private var initialScrollPoint: NSPoint?
+    private var initialMousePoint: NSPoint?
+    
+    private func findScrollView() -> NSScrollView? {
+        func find(in view: NSView) -> NSScrollView? {
+            if let sv = view as? NSScrollView {
+                return sv
+            }
+            for subview in view.subviews {
+                if let sv = find(in: subview) {
+                    return sv
+                }
+            }
+            return nil
+        }
+        return find(in: self)
+    }
+    
+    override func viewWillMove(toWindow newWindow: NSWindow?) {
+        super.viewWillMove(toWindow: newWindow)
+        if newWindow == nil && isMiddleDragging {
+            isMiddleDragging = false
+            NSCursor.pop()
+        }
+    }
+    
+    override func otherMouseDown(with event: NSEvent) {
+        if event.buttonNumber == 2 {
+            if let scrollView = findScrollView() {
+                self.initialScrollPoint = scrollView.contentView.bounds.origin
+                self.initialMousePoint = self.convert(event.locationInWindow, from: nil)
+                self.isMiddleDragging = true
+                NSCursor.closedHand.push()
+            }
+        } else {
+            super.otherMouseDown(with: event)
+        }
+    }
+    
+    override func otherMouseDragged(with event: NSEvent) {
+        if event.buttonNumber == 2 && isMiddleDragging,
+           let initialScroll = self.initialScrollPoint,
+           let initialMouse = self.initialMousePoint,
+           let scrollView = findScrollView() {
+            
+            let currentMouse = self.convert(event.locationInWindow, from: nil)
+            let dx = currentMouse.x - initialMouse.x
+            let dy = currentMouse.y - initialMouse.y
+            
+            // Convert displacement from PDFView space to contentView space to respect magnification/zoom
+            let p0 = self.convert(NSPoint.zero, to: scrollView.contentView)
+            let p1 = self.convert(NSPoint(x: dx, y: dy), to: scrollView.contentView)
+            let deltaX = p1.x - p0.x
+            let deltaY = p1.y - p0.y
+            
+            let newScrollPoint = NSPoint(x: initialScroll.x - deltaX, y: initialScroll.y - deltaY)
+            scrollView.contentView.scroll(to: newScrollPoint)
+            scrollView.reflectScrolledClipView(scrollView.contentView)
+        } else {
+            super.otherMouseDragged(with: event)
+        }
+    }
+    
+    override func otherMouseUp(with event: NSEvent) {
+        if event.buttonNumber == 2 && isMiddleDragging {
+            self.initialScrollPoint = nil
+            self.initialMousePoint = nil
+            self.isMiddleDragging = false
+            NSCursor.pop()
+        } else {
+            super.otherMouseUp(with: event)
+        }
+    }
+    
+    override func keyDown(with event: NSEvent) {
+        let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
+        if modifiers.isEmpty {
+            if event.keyCode == 123 { // Left Arrow
+                if self.canGoToPreviousPage {
+                    self.goToPreviousPage(nil)
+                    return
+                }
+            } else if event.keyCode == 124 { // Right Arrow
+                if self.canGoToNextPage {
+                    self.goToNextPage(nil)
+                    return
+                }
+            }
+        }
+        super.keyDown(with: event)
+    }
+    
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         
@@ -135,6 +228,9 @@ class CustomPDFView: PDFView {
     deinit {
         if let monitor = scrollMonitor {
             NSEvent.removeMonitor(monitor)
+        }
+        if isMiddleDragging {
+            NSCursor.pop()
         }
     }
 }

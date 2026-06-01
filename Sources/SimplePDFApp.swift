@@ -20,6 +20,10 @@ struct OpenWindowActionKey: FocusedValueKey {
     typealias Value = () -> Void
 }
 
+struct JumpToPageActionKey: FocusedValueKey {
+    typealias Value = () -> Void
+}
+
 extension FocusedValues {
     var searchAction: SearchActionKey.Value? {
         get { self[SearchActionKey.self] }
@@ -40,18 +44,28 @@ extension FocusedValues {
         get { self[OpenWindowActionKey.self] }
         set { self[OpenWindowActionKey.self] = newValue }
     }
+    
+    var jumpToPageAction: JumpToPageActionKey.Value? {
+        get { self[JumpToPageActionKey.self] }
+        set { self[JumpToPageActionKey.self] = newValue }
+    }
 }
 
 // Commands definition for global search menu item
 struct SearchCommands: Commands {
     @FocusedValue(\.searchAction) var searchAction
+    @AppStorage("shortcut_findText") private var findTextData: Data?
+    
+    var findTextShortcut: ShortcutConfig {
+        ShortcutManager.getShortcut(forKey: "shortcut_findText", defaultShortcut: ShortcutManager.defaultFindText)
+    }
     
     var body: some Commands {
         CommandGroup(after: .textEditing) {
             Button("Find...") {
                 searchAction?()
             }
-            .keyboardShortcut("f", modifiers: .command)
+            .keyboardShortcut(findTextShortcut.swiftUIKeyEquivalent, modifiers: findTextShortcut.swiftUIModifiers)
             .disabled(searchAction == nil)
         }
     }
@@ -61,18 +75,28 @@ struct SearchCommands: Commands {
 struct FileOpenCommands: Commands {
     @FocusedValue(\.openTabAction) var openTabAction
     @FocusedValue(\.openWindowAction) var openWindowAction
+    @AppStorage("shortcut_openTab") private var openTabShortcutData: Data?
+    @AppStorage("shortcut_openWindow") private var openWindowShortcutData: Data?
+    
+    var openTabShortcut: ShortcutConfig {
+        ShortcutManager.getShortcut(forKey: "shortcut_openTab", defaultShortcut: ShortcutManager.defaultOpenTab)
+    }
+    
+    var openWindowShortcut: ShortcutConfig {
+        ShortcutManager.getShortcut(forKey: "shortcut_openWindow", defaultShortcut: ShortcutManager.defaultOpenWindow)
+    }
     
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
             Button("Open in New Tab...") {
                 openTabAction?()
             }
-            .keyboardShortcut("o", modifiers: .command)
+            .keyboardShortcut(openTabShortcut.swiftUIKeyEquivalent, modifiers: openTabShortcut.swiftUIModifiers)
             
             Button("Open in New Window...") {
                 openWindowAction?()
             }
-            .keyboardShortcut("n", modifiers: .command)
+            .keyboardShortcut(openWindowShortcut.swiftUIKeyEquivalent, modifiers: openWindowShortcut.swiftUIModifiers)
         }
     }
 }
@@ -80,6 +104,11 @@ struct FileOpenCommands: Commands {
 // Commands definition for Close (Cmd+W) routing
 struct CloseCommands: Commands {
     @FocusedValue(\.closeAction) var closeAction
+    @AppStorage("shortcut_closeDoc") private var closeDocData: Data?
+    
+    var closeDocShortcut: ShortcutConfig {
+        ShortcutManager.getShortcut(forKey: "shortcut_closeDoc", defaultShortcut: ShortcutManager.defaultCloseDoc)
+    }
     
     var body: some Commands {
         CommandGroup(replacing: .saveItem) {
@@ -90,7 +119,27 @@ struct CloseCommands: Commands {
                     NSApp.keyWindow?.performClose(nil)
                 }
             }
-            .keyboardShortcut("w", modifiers: .command)
+            .keyboardShortcut(closeDocShortcut.swiftUIKeyEquivalent, modifiers: closeDocShortcut.swiftUIModifiers)
+        }
+    }
+}
+
+// Commands definition for Go to Page (Cmd+P) replacing Print menu item
+struct FileJumpCommands: Commands {
+    @FocusedValue(\.jumpToPageAction) var jumpToPageAction
+    @AppStorage("shortcut_goToPage") private var goToPageData: Data?
+    
+    var goToPageShortcut: ShortcutConfig {
+        ShortcutManager.getShortcut(forKey: "shortcut_goToPage", defaultShortcut: ShortcutManager.defaultGoToPage)
+    }
+    
+    var body: some Commands {
+        CommandGroup(replacing: .printItem) {
+            Button("Go to Page...") {
+                jumpToPageAction?()
+            }
+            .keyboardShortcut(goToPageShortcut.swiftUIKeyEquivalent, modifiers: goToPageShortcut.swiftUIModifiers)
+            .disabled(jumpToPageAction == nil)
         }
     }
 }
@@ -117,6 +166,23 @@ func findPDFView(in view: NSView) -> CustomPDFView? {
     return nil
 }
 
+// Focus window displaying a specific PDF file and return true, or return false if not found
+func focusWindow(showing url: URL, excluding currentWindow: NSWindow? = nil) -> Bool {
+    let targetPath = url.standardized.path
+    for window in NSApplication.shared.windows {
+        guard window != currentWindow && window.isVisible && window.canBecomeKey && !window.className.contains("Panel") else { continue }
+        if let contentView = window.contentView,
+           let pdfView = findPDFView(in: contentView),
+           let docURL = pdfView.document?.documentURL {
+            if docURL.standardized.path.localizedCaseInsensitiveCompare(targetPath) == .orderedSame {
+                window.makeKeyAndOrderFront(nil)
+                return true
+            }
+        }
+    }
+    return false
+}
+
 // Restore previously open PDF documents (posts notifications handled by ContentView)
 func restoreOpenDocuments() {
     guard let paths = UserDefaults.standard.stringArray(forKey: "OpenPDFPaths"), !paths.isEmpty else { return }
@@ -128,8 +194,43 @@ func restoreOpenDocuments() {
     }
 }
 
+class AppDelegate: NSObject, NSApplicationDelegate {
+    static var launchURL: URL?
+    
+    func application(_ sender: NSApplication, openFiles filenames: [String]) {
+        for filename in filenames {
+            let url = URL(fileURLWithPath: filename)
+            handleOpenURL(url)
+        }
+        sender.reply(toOpenOrPrint: .success)
+    }
+    
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            handleOpenURL(url)
+        }
+    }
+    
+    private func handleOpenURL(_ url: URL) {
+        if focusWindow(showing: url) {
+            return
+        }
+        
+        let activeWindows = NSApplication.shared.windows.filter {
+            $0.isVisible && !$0.className.contains("Panel") && $0.canBecomeKey
+        }
+        
+        if activeWindows.isEmpty {
+            AppDelegate.launchURL = url
+        } else {
+            NotificationCenter.default.post(name: Notification.Name("OpenPDFAsTab"), object: url)
+        }
+    }
+}
+
 @main
 struct SimplePDFApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var initialURL: URL? = nil
     
     init() {
@@ -172,7 +273,7 @@ struct SimplePDFApp: App {
     var body: some Scene {
         // Main window (shows landing page by default, or initial URL)
         WindowGroup {
-            ContentView(fileURL: initialURL)
+            ContentView(fileURL: AppDelegate.launchURL ?? initialURL)
                 .frame(minWidth: 800, minHeight: 600)
         }
         
@@ -186,6 +287,11 @@ struct SimplePDFApp: App {
             FileOpenCommands()
             SearchCommands()
             CloseCommands()
+            FileJumpCommands()
+        }
+        
+        Settings {
+            SettingsView()
         }
     }
 }
