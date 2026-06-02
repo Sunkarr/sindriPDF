@@ -165,6 +165,9 @@ class CustomPDFView: PDFView {
                     $0.canBecomeKey
                 }
                 if let hostWindow = otherWindows.first {
+                    // Match the frame of the host window exactly so that adding it as a tab doesn't cause a resize
+                    window.setFrame(hostWindow.frame, display: false)
+                    
                     let lastTab = hostWindow.tabGroup?.windows.last ?? hostWindow
                     lastTab.makeKey()
                     lastTab.addTabbedWindow(window, ordered: .above)
