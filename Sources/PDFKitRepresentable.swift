@@ -239,13 +239,29 @@ class CustomPDFView: PDFView, PDFDocumentDelegate {
         }
     }
     
+    var onUserZooming: (() -> Void)?
+    
     private func handleScrollZoom(with event: NSEvent) {
         let dy = event.scrollingDeltaY
         if dy != 0 {
-            self.autoScales = false
+            if self.autoScales {
+                self.autoScales = false
+                self.onUserZooming?()
+            }
             let factor = 1.0 + (dy > 0 ? 0.05 : -0.05)
             self.scaleFactor = min(max(self.scaleFactor * CGFloat(factor), 0.1), 5.0)
         }
+    }
+    
+    override func magnify(with event: NSEvent) {
+        if event.magnification != 0 {
+            if self.autoScales {
+                DLog("CustomPDFView: magnify starting, setting autoScales = false. Magnification: \(event.magnification)")
+                self.autoScales = false
+                self.onUserZooming?()
+            }
+        }
+        super.magnify(with: event)
     }
     
     private func clearImageHighlight() {
@@ -437,6 +453,10 @@ struct PDFViewRepresentable: NSViewRepresentable {
         pdfView.displaysPageBreaks = !isPresentationMode
         pdfView.postsFrameChangedNotifications = true
         
+        pdfView.onUserZooming = {
+            context.coordinator.userDidStartZooming()
+        }
+        
         context.coordinator.updateCurrentPage()
         context.coordinator.updateScaleFactor()
         
@@ -475,18 +495,35 @@ struct PDFViewRepresentable: NSViewRepresentable {
         
         // Update Auto Scales first (order matters to resolve scale sync races)
         if nsView.autoScales != autoScales {
-            nsView.autoScales = autoScales
-            if autoScales {
-                // If autoScales is turned on, sync the scale factor back to state
+            if autoScales == true && !nsView.autoScales && abs(Double(nsView.scaleFactor) - scaleFactor) > 0.01 {
+                // User zoomed internally; do not force autoScales=true. Let state sync later.
+                DLog("updateNSView: User zoomed internally, syncing autoScales to false instead of forcing true")
                 DispatchQueue.main.async {
-                    self.scaleFactor = Double(nsView.scaleFactor)
+                    self.autoScales = false
+                }
+            } else {
+                DLog("updateNSView: Changing nsView.autoScales from \(nsView.autoScales) to \(autoScales)")
+                nsView.autoScales = autoScales
+                if autoScales {
+                    // If autoScales is turned on, sync the scale factor back to state
+                    DLog("updateNSView: AutoScales is true, syncing scaleFactor state to \(nsView.scaleFactor)")
+                    DispatchQueue.main.async {
+                        self.scaleFactor = Double(nsView.scaleFactor)
+                    }
                 }
             }
         }
         
         // Then Update Scale
         if !autoScales && abs(Double(nsView.scaleFactor) - scaleFactor) > 0.01 {
-            nsView.scaleFactor = CGFloat(scaleFactor)
+            if let index = context.coordinator.scalesSentToSwiftUI.firstIndex(where: { abs($0 - scaleFactor) < 0.001 }) {
+                // This state update originated from PDFView (e.g. trackpad), ignore it to prevent jumpiness
+                context.coordinator.scalesSentToSwiftUI.removeSubrange(0...index)
+            } else {
+                // This state update originated from SwiftUI (e.g. slider), push to PDFView
+                nsView.scaleFactor = CGFloat(scaleFactor)
+                context.coordinator.scalesSentToSwiftUI.removeAll()
+            }
         }
         
         // Update Display Mode
@@ -518,6 +555,7 @@ struct PDFViewRepresentable: NSViewRepresentable {
     class Coordinator: NSObject {
         var parent: PDFViewRepresentable
         private var cancellables = Set<AnyCancellable>()
+        var scalesSentToSwiftUI: [Double] = []
         
         init(_ parent: PDFViewRepresentable) {
             self.parent = parent
@@ -550,6 +588,34 @@ struct PDFViewRepresentable: NSViewRepresentable {
                     self.updatePageRect()
                 }
                 .store(in: &cancellables)
+                
+            // Observe live magnification (trackpad pinch)
+            NotificationCenter.default.publisher(for: NSScrollView.willStartLiveMagnifyNotification)
+                .sink { [weak self] notification in
+                    guard let self = self,
+                          let scrollView = notification.object as? NSScrollView,
+                          scrollView.isDescendant(of: self.parent.pdfView) else { return }
+                    
+                    DLog("Coordinator: NSScrollView started live magnify! Setting autoScales = false")
+                    if self.parent.autoScales {
+                        DispatchQueue.main.async {
+                            self.parent.autoScales = false
+                        }
+                        self.parent.pdfView.autoScales = false
+                    }
+                }
+                .store(in: &cancellables)
+                
+            NotificationCenter.default.publisher(for: NSScrollView.didEndLiveMagnifyNotification)
+                .sink { [weak self] notification in
+                    guard let self = self,
+                          let scrollView = notification.object as? NSScrollView,
+                          scrollView.isDescendant(of: self.parent.pdfView) else { return }
+                    
+                    DLog("Coordinator: NSScrollView ended live magnify! Updating scale factor.")
+                    self.updateScaleFactor()
+                }
+                .store(in: &cancellables)
         }
         
         func updateCurrentPage() {
@@ -564,9 +630,17 @@ struct PDFViewRepresentable: NSViewRepresentable {
             updatePageRect()
         }
         
+        func userDidStartZooming() {
+            DLog("Coordinator: userDidStartZooming called, current autoScales: \(parent.autoScales)")
+            if parent.autoScales {
+                self.parent.autoScales = false
+            }
+        }
+        
         func updateScaleFactor() {
             let scale = Double(parent.pdfView.scaleFactor)
             if abs(parent.scaleFactor - scale) > 0.01 {
+                scalesSentToSwiftUI.append(scale)
                 DispatchQueue.main.async {
                     self.parent.scaleFactor = scale
                     if !self.parent.pdfView.autoScales && self.parent.autoScales {

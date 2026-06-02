@@ -204,6 +204,8 @@ struct SettingsView: View {
     @AppStorage("presentationProgressBarThickness") private var progressBarThickness: Double = 2.0
     @AppStorage("presentationProgressBarColor") private var progressBarHexColor: String = "#FF0000"
     
+    @AppStorage("enableDebugLogging") private var enableDebugLogging: Bool = false
+    
     @State private var selectedTab: String = "credits"
     
     private let labelWidth: CGFloat = 110
@@ -376,6 +378,37 @@ struct SettingsView: View {
                                         set: { progressBarHexColor = $0.toHex() }
                                     ))
                                     .labelsHidden()
+                                }
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(Color(NSColor.controlBackgroundColor).opacity(0.4))
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.gray.opacity(0.15), lineWidth: 1)
+                    )
+                    // Section 4: Debugging
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Debugging")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(spacing: 8) {
+                                Spacer()
+                                    .frame(width: labelWidth)
+                                Toggle("Enable Debug Logging", isOn: $enableDebugLogging)
+                            }
+                            
+                            HStack(spacing: 8) {
+                                Spacer()
+                                    .frame(width: labelWidth)
+                                Button("Open Log Folder") {
+                                    AppLogger.shared.openLogFolder()
                                 }
                             }
                         }
