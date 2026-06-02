@@ -228,7 +228,7 @@ struct SettingsView: View {
                         .foregroundColor(.secondary)
                 }
                 
-                Text("A sleek, lightweight PDF viewer for macOS.\nNo bloatware, no popups, and no mandatory payments... ever.")
+                Text("A sleek, lightweight PDF viewer for macOS.\nNo bloatware, no popups, and no subscription... ever.")
                     .font(.body)
                     .multilineTextAlignment(.center)
                     .foregroundColor(.secondary)
