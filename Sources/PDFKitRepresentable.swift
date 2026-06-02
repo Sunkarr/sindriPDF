@@ -239,6 +239,60 @@ class CustomPDFView: PDFView {
         }
     }
     
+    override func menu(for event: NSEvent) -> NSMenu? {
+        guard let menu = super.menu(for: event) else { return nil }
+        
+        let actionsToSuppress: Set<String> = [
+            "_setSinglePage:",
+            "_setSinglePageScrolling:",
+            "_setDoublePage:",
+            "_setDoublePageScrolling:"
+        ]
+        
+        // Remove items with matching actions
+        for item in menu.items.reversed() {
+            if let action = item.action {
+                let actionName = String(describing: action)
+                if actionsToSuppress.contains(actionName) {
+                    menu.removeItem(item)
+                }
+            }
+        }
+        
+        // Clean up separators in the modified menu
+        var lastWasSeparator = false
+        var itemsToRemove: [NSMenuItem] = []
+        
+        // Remove leading separator if any
+        if menu.items.first?.isSeparatorItem == true {
+            itemsToRemove.append(menu.items.first!)
+        }
+        
+        for item in menu.items {
+            if item.isSeparatorItem {
+                if lastWasSeparator {
+                    itemsToRemove.append(item)
+                }
+                lastWasSeparator = true
+            } else {
+                lastWasSeparator = false
+            }
+        }
+        
+        // Remove trailing separator if any
+        if menu.items.last?.isSeparatorItem == true {
+            itemsToRemove.append(menu.items.last!)
+        }
+        
+        for item in itemsToRemove {
+            if menu.items.contains(item) {
+                menu.removeItem(item)
+            }
+        }
+        
+        return menu
+    }
+    
     deinit {
         if let monitor = scrollMonitor {
             NSEvent.removeMonitor(monitor)
