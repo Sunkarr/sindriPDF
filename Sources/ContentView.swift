@@ -120,7 +120,7 @@ struct ContentView: View {
     }
     
     // Shared CustomPDFView for this document window
-    private let sharedPDFView = CustomPDFView()
+    @State private var sharedPDFView = CustomPDFView()
     
     var body: some View {
         Group {

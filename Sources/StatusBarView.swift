@@ -90,6 +90,7 @@ struct StatusBarView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
+                    .fixedSize()
                     .help("Actual Size (1:1)")
                 } else {
                     Button("1:1") {
@@ -98,6 +99,7 @@ struct StatusBarView: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
+                    .fixedSize()
                     .help("Actual Size (1:1)")
                 }
             }

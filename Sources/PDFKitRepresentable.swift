@@ -259,6 +259,8 @@ struct PDFViewRepresentable: NSViewRepresentable {
     }
     
     func updateNSView(_ nsView: CustomPDFView, context: Context) {
+        context.coordinator.parent = self
+        
         // Update Document
         if nsView.document != document {
             nsView.document = document
