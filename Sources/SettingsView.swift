@@ -204,11 +204,67 @@ struct SettingsView: View {
     @AppStorage("presentationProgressBarThickness") private var progressBarThickness: Double = 2.0
     @AppStorage("presentationProgressBarColor") private var progressBarHexColor: String = "#FF0000"
     
+    @State private var selectedTab: String = "credits"
+    
     private let labelWidth: CGFloat = 110
     
     var body: some View {
-        TabView {
-            // Tab 1: General Preferences
+        TabView(selection: $selectedTab) {
+            // Tab 1: Author Credits & Support info
+            VStack(spacing: 20) {
+                // Squircle App Icon View
+                BrandLogoView(size: 80)
+                
+                VStack(spacing: 6) {
+                    Text("SimplePDF")
+                        .font(.title)
+                        .fontWeight(.bold)
+                    Text("Version 1.0")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                Text("A lightweight, fast, and feature-rich PDF reader built natively for macOS.")
+                    .font(.body)
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 30)
+                
+                Divider().frame(width: 200)
+                
+                VStack(spacing: 8) {
+                    Link(destination: URL(string: "https://github.com/Sunkarr/simple-pdf")!) {
+                        HStack {
+                            Image(systemName: "link")
+                            Text("GitHub Repository")
+                        }
+                        .fontWeight(.semibold)
+                        .foregroundColor(.accentColor)
+                    }
+                    
+                    Link(destination: URL(string: "https://buymeacoffee.com/placeholder")!) {
+                        HStack {
+                            Image(systemName: "cup.and.saucer.fill")
+                            Text("Buy Me a Coffee (Support)")
+                        }
+                        .fontWeight(.semibold)
+                        .foregroundColor(.orange)
+                    }
+                }
+                
+                Spacer()
+                
+                Text("Created with ❤️ by Jonas")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(30)
+            .tabItem {
+                Label("Credits", systemImage: "info.circle")
+            }
+            .tag("credits")
+            
+            // Tab 2: General Preferences
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     // Section 1: Page Dimensions
@@ -339,8 +395,9 @@ struct SettingsView: View {
             .tabItem {
                 Label("General", systemImage: "gearshape")
             }
+            .tag("general")
             
-            // Tab 2: Keyboard Shortcuts Config
+            // Tab 3: Keyboard Shortcuts Config
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     // Section 1: File & Tabs
@@ -394,59 +451,10 @@ struct SettingsView: View {
             .tabItem {
                 Label("Shortcuts", systemImage: "keyboard")
             }
-            
-            // Tab 3: Author Credits & Support info
-            VStack(spacing: 20) {
-                // Squircle App Icon View
-                BrandLogoView(size: 80)
-                
-                VStack(spacing: 6) {
-                    Text("SimplePDF")
-                        .font(.title)
-                        .fontWeight(.bold)
-                    Text("Version 1.0")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                
-                Text("A lightweight, fast, and feature-rich PDF reader built natively for macOS.")
-                    .font(.body)
-                    .multilineTextAlignment(.center)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 30)
-                
-                Divider().frame(width: 200)
-                
-                VStack(spacing: 8) {
-                    Link(destination: URL(string: "https://github.com/Sunkarr/simple-pdf")!) {
-                        HStack {
-                            Image(systemName: "link")
-                            Text("GitHub Repository")
-                        }
-                        .fontWeight(.semibold)
-                        .foregroundColor(.accentColor)
-                    }
-                    
-                    Link(destination: URL(string: "https://buymeacoffee.com/placeholder")!) {
-                        HStack {
-                            Image(systemName: "cup.and.saucer.fill")
-                            Text("Buy Me a Coffee (Support)")
-                        }
-                        .fontWeight(.semibold)
-                        .foregroundColor(.orange)
-                    }
-                }
-                
-                Spacer()
-                
-                Text("Created with ❤️ by Jonas")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            .padding(30)
-            .tabItem {
-                Label("Credits", systemImage: "info.circle")
-            }
+            .tag("shortcuts")
+        }
+        .onAppear {
+            selectedTab = "credits"
         }
         .frame(width: 440, height: 420)
     }
