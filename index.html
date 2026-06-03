@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SimplePDF - The Crisp macOS PDF Viewer</title>
+    <meta name="description" content="SimplePDF is a lightning-fast, crisp, and beautifully designed PDF viewer for macOS.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="glow-orb"></div>
+    <div class="glow-orb red"></div>
+
+    <header>
+        <nav class="container">
+            <div class="logo">
+                <img src="img/logo.png" alt="SimplePDF Logo">
+                <span>SimplePDF</span>
+            </div>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#about">About</a>
+                <a href="#" class="btn-small">Buy me a coffee ☕</a>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero container">
+            <div class="hero-content fade-in">
+                <div class="badge">A Student Project</div>
+                <h1>The <span class="highlight">Crisp</span> PDF Viewer for macOS.</h1>
+                <p>Experience lightning-fast document viewing with a beautifully minimal interface designed specifically for your Mac.</p>
+                
+                <div class="cta-group">
+                    <a href="#" class="btn-primary" id="download-btn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        Download for Mac (.dmg)
+                    </a>
+                </div>
+                <p class="sub-cta">Requires macOS 13.0 or later. Free and open source.</p>
+            </div>
+            
+            <div class="hero-visual fade-in delay-1">
+                <div class="glass-card mockup">
+                    <div class="mockup-header">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
+                    </div>
+                    <div class="mockup-body">
+                        <img src="img/logo.png" alt="SimplePDF App" class="mockup-logo">
+                        <h3>SimplePDF.app</h3>
+                        <p>Loading document...</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="about" class="about-section container fade-in delay-2">
+            <div class="glass-card about-card">
+                <div class="about-content">
+                    <h2>About the Developer</h2>
+                    <p>Hi, I'm <strong class="highlight">Jonas Bratschi</strong>. I'm a student passionate about crafting clean, native macOS applications. I built SimplePDF because I wanted a lightweight, distraction-free PDF viewer that feels right at home on Mac.</p>
+                    <p>As a student, balancing studies and software development is a rewarding challenge. If you enjoy using SimplePDF, consider supporting my work!</p>
+                    
+                    <div class="about-links">
+                        <a href="https://www.linkedin.com/in/jonasbratschi/" target="_blank" class="linkedin-link">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+                            </svg>
+                            Connect on LinkedIn
+                        </a>
+                        <a href="#" class="btn-small outline">Buy me a coffee ☕</a>
+                    </div>
+                </div>
+                <div class="about-image">
+                    <!-- Note for user: Replace with the actual image sent in chat if needed, named profile.jpg -->
+                    <img src="img/profile.jpg" alt="Jonas Bratschi" id="profile-img">
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 Jonas Bratschi. A student project built with passion.</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
