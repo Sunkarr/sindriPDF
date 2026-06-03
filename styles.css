@@ -152,6 +152,31 @@ nav {
     transform: translateY(0) scale(0.98);
 }
 
+.btn-coffee {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    background: #ffbd2e;
+    color: #000;
+    padding: 16px 32px;
+    border-radius: 100px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1.1rem;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    box-shadow: 0 4px 14px rgba(255, 189, 46, 0.3);
+}
+
+.btn-coffee:hover {
+    background: #ffc84a;
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 6px 20px rgba(255, 189, 46, 0.4);
+}
+
+.btn-coffee:active {
+    transform: translateY(0) scale(0.98);
+}
+
 .btn-small {
     padding: 8px 16px;
     border-radius: 100px;
@@ -203,6 +228,14 @@ nav {
     font-size: 0.85rem;
     margin-top: 16px;
     opacity: 0.7;
+}
+
+.cta-group {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
 }
 
 /* Hero Visual (Mockup) */
