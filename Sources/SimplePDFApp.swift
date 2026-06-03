@@ -329,6 +329,17 @@ class OpenDocumentsRegistry {
         return nil
     }
     
+    func url(for window: NSWindow) -> URL? {
+        lock.lock()
+        defer { lock.unlock() }
+        for (path, w) in openDocuments {
+            if w == window {
+                return URL(fileURLWithPath: path)
+            }
+        }
+        return nil
+    }
+    
     func openPaths() -> [String] {
         lock.lock()
         defer { lock.unlock() }
