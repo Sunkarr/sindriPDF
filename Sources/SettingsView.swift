@@ -35,6 +35,29 @@ struct ShortcutConfig: Codable, Equatable {
     }
 }
 
+// Model for Backup & Restore settings
+struct SettingsBackup: Codable {
+    var pageDimensionUnit: String?
+    var restoreSession: Bool?
+    var presentationShowProgressBar: Bool?
+    var presentationProgressBarPosition: String?
+    var presentationProgressBarThickness: Double?
+    var presentationProgressBarColor: String?
+    var enableDebugLogging: Bool?
+    var sidebarWidth: Double?
+    
+    var launchAtLogin: Bool?
+    
+    var shortcut_openTab: ShortcutConfig?
+    var shortcut_openWindow: ShortcutConfig?
+    var shortcut_closeDoc: ShortcutConfig?
+    var shortcut_findText: ShortcutConfig?
+    var shortcut_goToPage: ShortcutConfig?
+    var shortcut_zoomFit: ShortcutConfig?
+    var shortcut_inspector: ShortcutConfig?
+    var shortcut_presentation: ShortcutConfig?
+}
+
 // Manager to handle default shortcut bindings
 struct ShortcutManager {
     static let defaultOpenTab = ShortcutConfig(key: "o", modifiers: Int(NSEvent.ModifierFlags.command.rawValue))
@@ -432,7 +455,45 @@ struct SettingsView: View {
                         RoundedRectangle(cornerRadius: 8)
                             .stroke(Color.gray.opacity(0.15), lineWidth: 1)
                     )
-                    // Section 5: Debugging
+                    // Section 5: Backup & Restore
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Backup & Restore")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        
+                        HStack(alignment: .top, spacing: 8) {
+                            Spacer()
+                                .frame(width: labelWidth)
+                            
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("Export your current settings as a JSON file, or import previously exported settings.")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                
+                                HStack(spacing: 12) {
+                                    Button("Import Settings") {
+                                        importSettings()
+                                    }
+                                    
+                                    Button("Export Settings") {
+                                        exportSettings()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(Color(NSColor.controlBackgroundColor).opacity(0.4))
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.gray.opacity(0.15), lineWidth: 1)
+                    )
+                    
+                    // Section 6: Debugging
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Debugging")
                             .font(.headline)
@@ -552,6 +613,97 @@ struct SettingsView: View {
             } catch {
                 print("SimplePDF: Failed to set default application: \(error)")
             }
+        }
+    }
+    
+    private func exportSettings() {
+        let ud = UserDefaults.standard
+        var backup = SettingsBackup()
+        
+        backup.pageDimensionUnit = ud.string(forKey: "PageDimensionUnit")
+        backup.restoreSession = ud.object(forKey: "RestoreSessionOnLaunch") as? Bool
+        backup.presentationShowProgressBar = ud.object(forKey: "presentationShowProgressBar") as? Bool
+        backup.presentationProgressBarPosition = ud.string(forKey: "presentationProgressBarPosition")
+        backup.presentationProgressBarThickness = ud.double(forKey: "presentationProgressBarThickness")
+        backup.presentationProgressBarColor = ud.string(forKey: "presentationProgressBarColor")
+        backup.enableDebugLogging = ud.object(forKey: "enableDebugLogging") as? Bool
+        backup.sidebarWidth = ud.double(forKey: "sidebarWidth")
+        
+        backup.launchAtLogin = LoginItemManager.isLaunchAtLoginEnabled
+        
+        func getShortcut(key: String) -> ShortcutConfig? {
+            if let data = ud.data(forKey: key),
+               let config = try? JSONDecoder().decode(ShortcutConfig.self, from: data) {
+                return config
+            }
+            return nil
+        }
+        
+        backup.shortcut_openTab = getShortcut(key: "shortcut_openTab")
+        backup.shortcut_openWindow = getShortcut(key: "shortcut_openWindow")
+        backup.shortcut_closeDoc = getShortcut(key: "shortcut_closeDoc")
+        backup.shortcut_findText = getShortcut(key: "shortcut_findText")
+        backup.shortcut_goToPage = getShortcut(key: "shortcut_goToPage")
+        backup.shortcut_zoomFit = getShortcut(key: "shortcut_zoomFit")
+        backup.shortcut_inspector = getShortcut(key: "shortcut_inspector")
+        backup.shortcut_presentation = getShortcut(key: "shortcut_presentation")
+        
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .prettyPrinted
+        guard let jsonData = try? encoder.encode(backup) else { return }
+        
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.json]
+        panel.nameFieldStringValue = "SimplePDF_Settings.json"
+        
+        if panel.runModal() == .OK, let url = panel.url {
+            try? jsonData.write(to: url)
+        }
+    }
+    
+    private func importSettings() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        
+        if panel.runModal() == .OK, let url = panel.url {
+            guard let jsonData = try? Data(contentsOf: url),
+                  let backup = try? JSONDecoder().decode(SettingsBackup.self, from: jsonData) else {
+                return
+            }
+            
+            let ud = UserDefaults.standard
+            
+            if let val = backup.pageDimensionUnit { ud.set(val, forKey: "PageDimensionUnit") }
+            if let val = backup.restoreSession { ud.set(val, forKey: "RestoreSessionOnLaunch") }
+            if let val = backup.presentationShowProgressBar { ud.set(val, forKey: "presentationShowProgressBar") }
+            if let val = backup.presentationProgressBarPosition { ud.set(val, forKey: "presentationProgressBarPosition") }
+            if let val = backup.presentationProgressBarThickness { ud.set(val, forKey: "presentationProgressBarThickness") }
+            if let val = backup.presentationProgressBarColor { ud.set(val, forKey: "presentationProgressBarColor") }
+            if let val = backup.enableDebugLogging { ud.set(val, forKey: "enableDebugLogging") }
+            if let val = backup.sidebarWidth, val > 0 { ud.set(val, forKey: "sidebarWidth") }
+            
+            if let val = backup.launchAtLogin {
+                LoginItemManager.setLaunchAtLogin(enabled: val)
+                launchAtLogin = val
+            }
+            
+            func setShortcut(_ config: ShortcutConfig?, key: String) {
+                if let config = config, let data = try? JSONEncoder().encode(config) {
+                    ud.set(data, forKey: key)
+                    NotificationCenter.default.post(name: Notification.Name("ShortcutChanged"), object: key)
+                }
+            }
+            
+            setShortcut(backup.shortcut_openTab, key: "shortcut_openTab")
+            setShortcut(backup.shortcut_openWindow, key: "shortcut_openWindow")
+            setShortcut(backup.shortcut_closeDoc, key: "shortcut_closeDoc")
+            setShortcut(backup.shortcut_findText, key: "shortcut_findText")
+            setShortcut(backup.shortcut_goToPage, key: "shortcut_goToPage")
+            setShortcut(backup.shortcut_zoomFit, key: "shortcut_zoomFit")
+            setShortcut(backup.shortcut_inspector, key: "shortcut_inspector")
+            setShortcut(backup.shortcut_presentation, key: "shortcut_presentation")
         }
     }
 }
