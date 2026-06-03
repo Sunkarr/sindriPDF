@@ -1,19 +1,17 @@
 # SimplePDF
 
-The crisp, native macOS PDF viewer.
+A lightweight, native macOS PDF viewer.
+
+**[Download & Website ↗](https://sunkarr.github.io/simplePDF)**
 
 ![Native macOS App](https://img.shields.io/badge/macOS-Native-blue)
 ![Free and Open Source](https://img.shields.io/badge/Open-Source-green)
 
-**Live Website & Download**: [https://sunkarr.github.io/simplePDF](https://sunkarr.github.io/simplePDF)
-
 ## Features
-- **Lightning Fast**: Built natively for macOS using Swift and PDFKit.
-- **Minimalist Interface**: No bloatware, no distracting sidebars by default, just your content.
-- **Crisp Rendering**: Perfect scaling and rendering for Retina displays.
-
-## Installation
-You can download the standalone DMG directly from the [live website](https://sunkarr.github.io/simplePDF/).
+- Native implementation using Swift and PDFKit.
+- Minimal UI footprint without sidebars or toolbars by default.
+- Standalone `.dmg` installation.
+- Completely free and open-source, no telemetry or subscriptions.
 
 ## Development
-This is an open-source project. Feel free to explore the code, report issues, or contribute!
+To build the project locally or contribute, clone the repository and run the provided build scripts, or open the source files directly.
