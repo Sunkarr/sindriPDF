@@ -11,6 +11,16 @@ import UniformTypeIdentifiers
     }
 }
 
+// Payload for swapping a document URL into a specific window during tab sorting
+class SwapDocumentPayload: NSObject {
+    let assignments: [NSWindow: URL]  // window → new URL mapping for batch swap
+    let activeURL: URL?  // URL that was active before sorting — the window receiving this should become key
+    init(assignments: [NSWindow: URL], activeURL: URL?) {
+        self.assignments = assignments
+        self.activeURL = activeURL
+    }
+}
+
 struct WindowAccessor: NSViewRepresentable {
     var shouldClose: Bool
     var onWindowFound: (NSWindow) -> Void
@@ -392,9 +402,47 @@ struct ContentView: View {
             self.isSearchPresented = false
             saveOpenDocuments()
         }
-        // Handle Sort Tabs request from the AppKit button next to plus (not yet implemented)
+        // Handle Sort Tabs request from the AppKit button next to plus
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("SortTabsAlphabetically"))) { _ in
-            // TODO: Implement tab sorting
+            // Only the key window should handle the sort to prevent triple-execution
+            guard currentWindow?.isKeyWindow == true || currentWindow == NSApp.keyWindow else {
+                DLog("SortTabsAlphabetically: skipping, not the key window")
+                return
+            }
+            DLog("SortTabsAlphabetically notification received (key window), currentWindow=\(String(describing: currentWindow))")
+            sortTabsAlphabetically()
+        }
+        // Handle per-window URL swap during tab sorting (batch notification)
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("SwapDocumentURL"))) { notification in
+            guard let payload = notification.object as? SwapDocumentPayload,
+                  let window = currentWindow,
+                  let newURL = payload.assignments[window] else { return }
+            
+            DLog("SwapDocumentURL: swapping to \(newURL.lastPathComponent) in window \(String(describing: currentWindow))")
+            
+            // Directly load the new document (registry is pre-cleared by the sender)
+            self.fileURL = newURL
+            if let doc = PDFDocument(url: newURL) {
+                doc.delegate = sharedPDFView
+                self.pdfDocument = doc
+                self.totalPages = doc.pageCount
+                self.currentPage = 1
+                self.scaleFactor = 1.0
+                self.autoScales = true
+                self.updateRegistry()
+                DLog("SwapDocumentURL: successfully loaded \(newURL.lastPathComponent)")
+            } else {
+                DLog("SwapDocumentURL: FAILED to create PDFDocument from \(newURL.path)")
+            }
+            
+            // If this window now holds the previously-active URL, make it the selected tab
+            if let activeURL = payload.activeURL,
+               newURL.standardized.path == activeURL.standardized.path {
+                DLog("SwapDocumentURL: restoring active tab for \(newURL.lastPathComponent)")
+                window.makeKey()
+            }
+            
+            saveOpenDocuments()
         }
         // Expose search trigger to global command menu
         .focusedSceneValue(\.searchAction, {
@@ -546,9 +594,106 @@ struct ContentView: View {
     // AppKit lifecycle events that cause splits, freezes, and ghost tabs.
     // Instead, every window stays exactly where it is — only the loaded document
     // is changed so that reading left-to-right produces alphabetical order.
-    // TODO: Implement tab sorting
     private func sortTabsAlphabetically() {
-        // Not yet implemented
+        DLog("sortTabsAlphabetically() called")
+        
+        guard let window = currentWindow ?? NSApp.keyWindow else {
+            DLog("sortTabsAlphabetically: no currentWindow or keyWindow")
+            return
+        }
+        guard let tabGroup = window.tabGroup else {
+            DLog("sortTabsAlphabetically: window has no tabGroup")
+            return
+        }
+        
+        let tabbedWindows = tabGroup.windows  // ordered left-to-right
+        DLog("sortTabsAlphabetically: tabGroup has \(tabbedWindows.count) windows")
+        
+        // Build mapping: window → current fileURL (via OpenDocumentsRegistry)
+        let registry = OpenDocumentsRegistry.shared
+        var windowURLPairs: [(NSWindow, URL)] = []
+        for (i, w) in tabbedWindows.enumerated() {
+            if let url = registry.url(for: w) {
+                DLog("sortTabsAlphabetically: window[\(i)] → \(url.lastPathComponent)")
+                windowURLPairs.append((w, url))
+            } else {
+                DLog("sortTabsAlphabetically: window[\(i)] → NO URL in registry (window=\(w))")
+            }
+        }
+        
+        DLog("sortTabsAlphabetically: found \(windowURLPairs.count) windows with URLs out of \(tabbedWindows.count) total")
+        
+        guard windowURLPairs.count == tabbedWindows.count else {
+            DLog("sortTabsAlphabetically: not all windows have URLs, aborting")
+            return
+        }
+        
+        // Sort URLs alphabetically by filename using natural/numeric comparison
+        // so "Lesson 3" sorts before "Lesson 10"
+        let sortedURLs = windowURLPairs
+            .map { $0.1 }
+            .sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
+        
+        // Check if already sorted
+        let currentURLs = windowURLPairs.map { $0.1 }
+        let currentPaths = currentURLs.map({ $0.standardized.path })
+        let sortedPaths = sortedURLs.map({ $0.standardized.path })
+        DLog("sortTabsAlphabetically: current order = \(currentURLs.map { $0.lastPathComponent })")
+        DLog("sortTabsAlphabetically: sorted order  = \(sortedURLs.map { $0.lastPathComponent })")
+        
+        guard sortedPaths != currentPaths else {
+            DLog("sortTabsAlphabetically: already sorted, nothing to do")
+            return
+        }
+        
+        // Remember which URL is currently active so we can re-select it after the swap
+        let activeURL = self.fileURL
+        DLog("sortTabsAlphabetically: active URL = \(activeURL?.lastPathComponent ?? "nil")")
+        
+        // Build the batch assignment map: window → new URL
+        var assignments: [NSWindow: URL] = [:]
+        for (index, w) in tabbedWindows.enumerated() {
+            guard index < sortedURLs.count else { break }
+            assignments[w] = sortedURLs[index]
+            DLog("sortTabsAlphabetically: window[\(index)] ← \(sortedURLs[index].lastPathComponent)")
+        }
+        
+        // Clear all URLs from the registry first to prevent conflicts during swap
+        for (_, url) in windowURLPairs {
+            registry.unregister(url: url)
+        }
+        DLog("sortTabsAlphabetically: cleared registry")
+        
+        // Animate: fade out → swap → fade in
+        let contentViews = tabbedWindows.compactMap { $0.contentView }
+        
+        // Phase 1: Fade out
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.15
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            for view in contentViews {
+                view.animator().alphaValue = 0.0
+            }
+        }, completionHandler: {
+            // Phase 2: Perform the swap
+            DLog("sortTabsAlphabetically: fade-out complete, dispatching batch SwapDocumentURL")
+            NotificationCenter.default.post(
+                name: Notification.Name("SwapDocumentURL"),
+                object: SwapDocumentPayload(assignments: assignments, activeURL: activeURL)
+            )
+            
+            // Phase 3: Fade back in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                NSAnimationContext.runAnimationGroup({ context in
+                    context.duration = 0.2
+                    context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                    for view in contentViews {
+                        view.animator().alphaValue = 1.0
+                    }
+                })
+            }
+            DLog("sortTabsAlphabetically: done")
+        })
     }
     
     // Dynamically inject the sort button next to the native plus button on the AppKit tab bar
