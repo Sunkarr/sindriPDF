@@ -279,14 +279,10 @@ extension NSWindow {
         panel.canChooseDirectories = false
         panel.allowedContentTypes = [UTType.pdf]
         
-        if panel.runModal() == .OK {
-            for (index, url) in panel.urls.enumerated() {
-                // Stagger notifications so SwiftUI has time to create each window
-                // before the next openWindow call fires
-                DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.15) {
-                    NotificationCenter.default.post(name: Notification.Name("OpenPDFAsTab"), object: url)
-                }
-            }
+        if panel.runModal() == .OK, !panel.urls.isEmpty {
+            // Send all URLs in a single notification so the handler can
+            // process them sequentially without key-window race conditions
+            NotificationCenter.default.post(name: Notification.Name("OpenPDFAsTab"), object: panel.urls)
         }
     }
 }

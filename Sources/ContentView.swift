@@ -380,15 +380,35 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: Notification.Name("OpenPDFAsTab"))) { notification in
             let isPrimaryWindow = currentWindow?.isKeyWindow == true || (NSApp.keyWindow == nil && NSApp.windows.filter({ $0.isVisible && $0.canBecomeKey }).first == currentWindow)
             guard isPrimaryWindow else { return }
-            if let url = notification.object as? URL {
-                if focusWindow(showing: url) {
-                    return
-                }
-                if fileURL == nil {
-                    self.fileURL = url
-                    self.loadPDF()
+            
+            // Accept both a single URL or an array of URLs
+            var urls: [URL] = []
+            if let singleURL = notification.object as? URL {
+                urls = [singleURL]
+            } else if let multipleURLs = notification.object as? [URL] {
+                urls = multipleURLs
+            }
+            
+            for (index, url) in urls.enumerated() {
+                if index == 0 {
+                    // First URL: handle synchronously (fill empty window or open immediately)
+                    if focusWindow(showing: url) {
+                        continue
+                    }
+                    if fileURL == nil {
+                        self.fileURL = url
+                        self.loadPDF()
+                    } else {
+                        openWindow(value: url)
+                    }
                 } else {
-                    openWindow(value: url)
+                    // Subsequent URLs: stagger so SwiftUI can materialize each window
+                    let delayedURL = url
+                    DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.3) {
+                        if !focusWindow(showing: delayedURL) {
+                            openWindow(value: delayedURL)
+                        }
+                    }
                 }
             }
         }
@@ -521,6 +541,15 @@ struct ContentView: View {
                 }
                 if let superview = window.contentView?.superview {
                     superview.menu = nil
+                }
+                
+                // Match frame to existing host window as early as possible to prevent resize flash
+                let otherWindows = NSApp.windows.filter {
+                    $0 != window && $0.isVisible && $0.canBecomeKey &&
+                    !$0.className.contains("Panel")
+                }
+                if let hostWindow = otherWindows.first, window.frame != hostWindow.frame {
+                    window.setFrame(hostWindow.frame, display: false, animate: false)
                 }
                 
                 if let url = fileURL {
