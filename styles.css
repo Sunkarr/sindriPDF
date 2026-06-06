@@ -38,7 +38,7 @@ html, body {
     top: -200px;
     left: -200px;
     border-radius: 50%;
-    z-index: -1;
+    z-index: 0;
     pointer-events: none;
 }
 
@@ -55,6 +55,8 @@ html, body {
     max-width: 1000px;
     margin: 0 auto;
     padding: 0 24px;
+    position: relative;
+    z-index: 1;
 }
 
 /* Typography */
