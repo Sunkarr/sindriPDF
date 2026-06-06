@@ -17,6 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const downloadBtn = document.getElementById('download-btn');
     downloadBtn.addEventListener('click', (e) => {
         e.preventDefault();
-        alert('Download feature coming soon! SimplePDF DMG will be available here.');
+        alert('Download feature coming soon! Sindri PDF DMG will be available here.');
     });
 });
