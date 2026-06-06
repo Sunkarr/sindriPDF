@@ -5,7 +5,7 @@ import Combine
 // Proxy delegate that intercepts middle-click close on the last tab
 // and redirects to landing page instead of closing the window.
 class WindowCloseProxy: NSObject, NSWindowDelegate {
-    weak var originalDelegate: NSWindowDelegate?
+    var originalDelegate: NSWindowDelegate?
     
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         let tabCount = sender.tabGroup?.windows.count ?? 1

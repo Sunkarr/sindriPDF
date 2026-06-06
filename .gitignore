@@ -1,9 +1,10 @@
 .DS_Store
 .build/
-sindriPDF.app/
+Sindri PDF.app/
 debug.txt
 debug_log.txt
 test_scrollview
 view_hierarchy.txt
 .Rhistory
+*.dmg
 

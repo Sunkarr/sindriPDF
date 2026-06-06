@@ -209,7 +209,7 @@ struct SindriPDFApp: App {
     
     init() {
         let currentApp = NSRunningApplication.current
-        let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: "com.jonas.sindriPDF")
+        let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: "com.jonas.SindriPDF")
             .filter { $0 != currentApp }
         
         if !runningApps.isEmpty {

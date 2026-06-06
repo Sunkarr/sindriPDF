@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "=== Building sindriPDF App Bundle ==="
+echo "=== Building Sindri PDF App Bundle ==="
 
 # Step 1: Create Icons
 echo "Generating App Icons..."
@@ -11,14 +11,14 @@ rm -rf SindriPDF.iconset
 
 # Step 2: Create Bundle Structure
 echo "Structuring App Bundle..."
-APP_DIR="sindriPDF.app"
+APP_DIR="Sindri PDF.app"
 rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR/Contents/MacOS"
 mkdir -p "$APP_DIR/Contents/Resources"
 
 # Step 3: Compile Binary
 echo "Compiling Swift files..."
-swiftc -O -target arm64-apple-macos14.0 Sources/*.swift -o "$APP_DIR/Contents/MacOS/sindriPDF"
+swiftc -O -target arm64-apple-macos14.0 Sources/*.swift -o "$APP_DIR/Contents/MacOS/Sindri PDF"
 
 # Step 4: Copy Assets
 cp SindriPDF.icns "$APP_DIR/Contents/Resources/AppIcon.icns"
@@ -33,13 +33,13 @@ cat <<EOF > "$APP_DIR/Contents/Info.plist"
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleExecutable</key>
-    <string>sindriPDF</string>
+    <string>Sindri PDF</string>
     <key>CFBundleIdentifier</key>
-    <string>com.jonas.sindriPDF</string>
+    <string>com.jonas.SindriPDF</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>sindriPDF</string>
+    <string>Sindri PDF</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -71,4 +71,4 @@ cat <<EOF > "$APP_DIR/Contents/Info.plist"
 </plist>
 EOF
 
-echo "sindriPDF.app successfully created!"
+echo "Sindri PDF.app successfully created!"

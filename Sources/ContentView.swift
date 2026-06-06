@@ -309,7 +309,7 @@ struct ContentView: View {
                 landingPageView
             }
         }
-        .navigationTitle(fileURL?.lastPathComponent ?? "sindriPDF")
+        .navigationTitle(fileURL?.lastPathComponent ?? "Sindri PDF")
         .onAppear {
             loadPDF()
             restoreSavedSessionIfFirstWindow()
@@ -747,11 +747,11 @@ struct ContentView: View {
               
         // Find or create the sort button
         let sortBtn: NSButton
-        if let existing = container.subviews.first(where: { $0.identifier?.rawValue == "sindriPDFSortButton" }) as? NSButton {
+        if let existing = container.subviews.first(where: { $0.identifier?.rawValue == "SindriPDFSortButton" }) as? NSButton {
             sortBtn = existing
         } else {
             sortBtn = NSButton(image: NSImage(systemSymbolName: "arrow.up.arrow.down", accessibilityDescription: "Sort Tabs")!, target: TabBarButtonTarget.shared, action: #selector(TabBarButtonTarget.sortTabs))
-            sortBtn.identifier = NSUserInterfaceItemIdentifier("sindriPDFSortButton")
+            sortBtn.identifier = NSUserInterfaceItemIdentifier("SindriPDFSortButton")
             
             // Match the native look of the newTabButton (bezelStyle rawValue 16 is .inline)
             let asBtn = newTabButton as? NSButton
@@ -825,7 +825,7 @@ struct ContentView: View {
                 .padding(.bottom, 10)
             
             VStack(spacing: 8) {
-                Text("sindriPDF")
+                Text("Sindri PDF")
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
                 

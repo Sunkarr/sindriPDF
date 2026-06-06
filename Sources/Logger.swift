@@ -20,7 +20,7 @@ class AppLogger {
         
         let fileManager = FileManager.default
         if let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
-            let logDir = appSupport.appendingPathComponent("sindriPDF/Logs")
+            let logDir = appSupport.appendingPathComponent("SindriPDF/Logs")
             do {
                 try fileManager.createDirectory(at: logDir, withIntermediateDirectories: true)
                 let dateFormatter = DateFormatter()
@@ -69,7 +69,7 @@ class AppLogger {
     func openLogFolder() {
         let fileManager = FileManager.default
         if let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
-            let logDir = appSupport.appendingPathComponent("sindriPDF/Logs")
+            let logDir = appSupport.appendingPathComponent("SindriPDF/Logs")
             NSWorkspace.shared.open(logDir)
         }
     }

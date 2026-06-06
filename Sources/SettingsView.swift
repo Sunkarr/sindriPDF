@@ -94,7 +94,7 @@ struct LoginItemManager {
                 }
             }
         } catch {
-            print("sindriPDF: Failed to change login item status: \(error.localizedDescription)")
+            print("Sindri PDF: Failed to change login item status: \(error.localizedDescription)")
         }
     }
     
@@ -245,7 +245,7 @@ struct SettingsView: View {
                 BrandLogoView(size: 80)
                 
                 VStack(spacing: 6) {
-                    Text("sindriPDF")
+                    Text("Sindri PDF")
                         .font(.title)
                         .fontWeight(.bold)
                     Text("Version 1.0")
@@ -336,7 +336,7 @@ struct SettingsView: View {
                             HStack(spacing: 8) {
                                 Spacer()
                                     .frame(width: labelWidth)
-                                Toggle("Open sindriPDF at login", isOn: $launchAtLogin)
+                                Toggle("Open Sindri PDF at login", isOn: $launchAtLogin)
                                     .onChange(of: launchAtLogin) { _, newValue in
                                         LoginItemManager.setLaunchAtLogin(enabled: newValue)
                                     }
@@ -370,11 +370,11 @@ struct SettingsView: View {
                                 Text("Default PDF Reader")
                                     .foregroundColor(.primary)
                                 if isDefaultApp {
-                                    Text("sindriPDF is already standard app for PDF")
+                                    Text("Sindri PDF is already standard app for PDF")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 } else {
-                                    Text("Make sindriPDF your default application for viewing PDFs")
+                                    Text("Make Sindri PDF your default application for viewing PDFs")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }
@@ -659,7 +659,7 @@ struct SettingsView: View {
                     checkDefaultApp()
                 }
             } catch {
-                print("sindriPDF: Failed to set default application: \(error)")
+                print("Sindri PDF: Failed to set default application: \(error)")
             }
         }
     }
@@ -703,7 +703,7 @@ struct SettingsView: View {
         
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.json]
-        panel.nameFieldStringValue = "sindriPDF_Settings.json"
+        panel.nameFieldStringValue = "SindriPDF_Settings.json"
         
         if panel.runModal() == .OK, let url = panel.url {
             try? jsonData.write(to: url)

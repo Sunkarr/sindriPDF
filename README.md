@@ -1,4 +1,4 @@
-# sindriPDF
+# Sindri PDF
 
 A sleek, lightweight PDF viewer for macOS. No bloatware, no popups, and no subscription... ever.
 
