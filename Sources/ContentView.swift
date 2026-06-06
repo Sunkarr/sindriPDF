@@ -446,6 +446,11 @@ struct ContentView: View {
                 self.scaleFactor = 1.0
                 self.autoScales = true
                 self.updateRegistry()
+                
+                // Force AppKit to update the tab title and proxy icon
+                window.representedURL = newURL
+                window.title = newURL.lastPathComponent
+                
                 DLog("SwapDocumentURL: successfully loaded \(newURL.lastPathComponent)")
             } else {
                 DLog("SwapDocumentURL: FAILED to create PDFDocument from \(newURL.path)")
@@ -949,6 +954,10 @@ struct ContentView: View {
             self.totalPages = doc.pageCount
             self.currentPage = 1
             self.updateRegistry()
+            
+            // Force window to update its title and proxy icon
+            currentWindow?.representedURL = resolvedURL
+            currentWindow?.title = resolvedURL.lastPathComponent
         }
     }
     
